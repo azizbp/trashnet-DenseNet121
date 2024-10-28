@@ -1,4 +1,3 @@
-# import library
 import os
 import wandb
 import zipfile
@@ -20,32 +19,30 @@ zip_file_path = 'dataset-resized.zip'
 with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
     zip_ref.extractall('trashnet')
 
-os.listdir('trashnet/dataset-resized')
-
 # remove the .DS_Store file
 ds_store_path = 'trashnet/dataset-resized/.DS_Store'
-
 if os.path.exists(ds_store_path):
     os.remove(ds_store_path)
-    print(".DS_Store file removed successfully.")
-else:
-    print(".DS_Store file does not exist.")
 
-# intialize the directory and see classes
+# initialize the directory and see classes
 train_dir = 'trashnet/dataset-resized'
-classes = os.listdir(train_dir)
+classes = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash']
 
 # using class weights
-total_samples = sum([len(os.listdir(os.path.join(train_dir, class_name))) 
-                    for class_name in ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash']])
+total_samples = sum([len(os.listdir(os.path.join(train_dir, class_name))) for class_name in classes])
 class_weights = {
-    0: total_samples / (6 * len(os.listdir(os.path.join(train_dir, 'cardboard')))),
-    1: total_samples / (6 * len(os.listdir(os.path.join(train_dir, 'glass')))),
-    2: total_samples / (6 * len(os.listdir(os.path.join(train_dir, 'metal')))),
-    3: total_samples / (6 * len(os.listdir(os.path.join(train_dir, 'paper')))),
-    4: total_samples / (6 * len(os.listdir(os.path.join(train_dir, 'plastic')))),
-    5: total_samples / (6 * len(os.listdir(os.path.join(train_dir, 'trash'))))
+    i: total_samples / (len(classes) * len(os.listdir(os.path.join(train_dir, class_name))))
+    for i, class_name in enumerate(classes)
 }
+
+# Define batch size in config
+config = {
+    "learning_rate": 0.001,
+    "epochs": 50,
+    "batch_size": 32
+}
+
+wandb.config.update(config)
 
 # augmentation
 train_datagen = ImageDataGenerator(
@@ -67,34 +64,34 @@ val_datagen = ImageDataGenerator(
     validation_split=0.2
 )
 
-# generator
+# generator with fixed batch size from config
 train_generator = train_datagen.flow_from_directory(
-        train_dir,
-        target_size=(224, 224),
-        batch_size=32,
-        class_mode='categorical',
-        shuffle=True,
-        subset='training'
+    train_dir,
+    target_size=(224, 224),
+    batch_size=config["batch_size"],
+    class_mode='categorical',
+    shuffle=True,
+    subset='training'
 )
 
 validation_generator = val_datagen.flow_from_directory(
-        train_dir,
-        target_size=(224, 224),
-        batch_size=32,
-        class_mode='categorical',
-        shuffle=False,
-        subset='validation'
+    train_dir,
+    target_size=(224, 224),
+    batch_size=config["batch_size"],
+    class_mode='categorical',
+    shuffle=False,
+    subset='validation'
 )
 
 # base model DenseNet121
 base_model = DenseNet121(input_shape=(224, 224, 3),
-                         include_top=False,
-                         weights='imagenet')
+                        include_top=False,
+                        weights='imagenet')
 
 for layer in base_model.layers[:-30]:
     layer.trainable = False
 
-# several additions to layer
+# model architecture
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
 x = BatchNormalization()(x)
@@ -103,32 +100,25 @@ x = Dense(256, kernel_regularizer=l2(0.01))(x)
 x = BatchNormalization()(x)
 x = Activation('relu')(x)
 x = Dropout(0.5)(x)
-predictions = Dense(6, activation='softmax')(x)
+predictions = Dense(len(classes), activation='softmax')(x)
 
 model = Model(inputs=base_model.input, outputs=predictions)
 
 # compile model
-optimizer = Adam(learning_rate=0.001)
+optimizer = Adam(learning_rate=config["learning_rate"])
+model.compile(loss='categorical_crossentropy', 
+             optimizer=optimizer, 
+             metrics=['accuracy'])
 
-model.compile(loss = 'categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+# callbacks
+lr_reduction = ReduceLROnPlateau(
+    monitor='val_loss',
+    patience=2,
+    factor=0.2,
+    min_lr=1e-7,
+    verbose=1
+)
 
-# setup config epoch, lr and batch size
-config = {
-    "learning_rate": 0.001,
-    "epochs": 50,
-    "batch_size": 32
-}
-
-wandb.config.update(config)
-
-# try to reduction the lr
-lr_reduction = ReduceLROnPlateau(monitor='val_loss', 
-                                 patience=2, 
-                                 factor=0.2,
-                                 min_lr=1e-7,
-                                 verbose=1)
-
-# early stopping callback
 early_stopping = EarlyStopping(
     monitor='val_loss',
     patience=5,
@@ -136,36 +126,35 @@ early_stopping = EarlyStopping(
     verbose=1
 )
 
-# define callback
-class myCallback(tf.keras.callbacks.Callback):
+class MyCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
-        if (logs.get('accuracy') > 0.9) and (logs.get('val_accuracy') > 0.9) :
+        if (logs.get('accuracy') > 0.9) and (logs.get('val_accuracy') > 0.9):
             self.model.stop_training = True
 
-callbacks = [myCallback(), early_stopping, lr_reduction]
+callbacks = [MyCallback(), early_stopping, lr_reduction]
 
 # begin training
-history = model.fit(train_generator, 
-                    validation_data=validation_generator, 
-                    batch_size=["batch_size"], 
-                    epochs=config["epochs"],
-                    class_weight=class_weights,
-                    verbose=1,
-                    callbacks=callbacks
-                    )
+history = model.fit(
+    train_generator,
+    validation_data=validation_generator,
+    epochs=config["epochs"],
+    class_weight=class_weights,
+    verbose=1,
+    callbacks=callbacks
+)
 
-# save epoch in wandb
-for epoch in range(config["epochs"]):
-
+# log metrics to wandb
+for epoch in range(len(history.history['accuracy'])):
     wandb.log({
         "epoch": epoch + 1,
-        "accuracy": 'accuracy',
-        "loss": 'loss',
-        "val_accuracy": 'val_accuracy',
-        "val_loss": 'val_loss'
+        "accuracy": history.history['accuracy'][epoch],
+        "loss": history.history['loss'][epoch],
+        "val_accuracy": history.history['val_accuracy'][epoch],
+        "val_loss": history.history['val_loss'][epoch]
     })
 
-
+# save model artifact
+model.save("bestModel-trashnet_v9-densenet121.h5")
 artifact = wandb.Artifact("trashnet-model", type="model")
 artifact.add_file("bestModel-trashnet_v9-densenet121.h5")
 wandb.log_artifact(artifact)
