@@ -24,7 +24,7 @@ jobs:
 
       - name: Download dataset
         run: |
-          curl -L -o https://huggingface.co/datasets/garythung/trashnet/download
+          git clone https://huggingface.co/datasets/garythung/trashnet
 
       - name: Run Training Script
         run: |
