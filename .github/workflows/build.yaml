@@ -25,12 +25,8 @@ jobs:
       - name: Run Jupyter Notebook
         run: |
           jupyter nbconvert --to notebook --execute trashnet-model.ipynb
-
-      - name: Run Training Script
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
-        run: |
-          python trashnet-model.py
 
       - name: Push Model to Hugging Face Hub
         env:
