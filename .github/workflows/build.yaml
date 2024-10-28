@@ -27,7 +27,7 @@ jobs:
           pip install nbconvert
           jupyter nbconvert --to script trashnet-model.ipynb
 
-            - name: Replace get_ipython() with subprocess
+      - name: Replace get_ipython() with subprocess
         run: |
           sed -i 's/get_ipython().system(/subprocess.run([/g' trashnet-model.py
           sed -i 's/)/], shell=True)/g' trashnet-model.py
