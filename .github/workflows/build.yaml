@@ -1,0 +1,39 @@
+name: Model Development Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Convert Jupyter Notebook to Python Script
+        run: |
+          pip install nbconvert
+          jupyter nbconvert --to script trashnet-model.ipynb
+
+      - name: Run Training Script
+        run: |
+          python trashnet-model.py
+
+      - name: Push Model to Hugging Face Hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface_hub
+          python push_to_hub.py
