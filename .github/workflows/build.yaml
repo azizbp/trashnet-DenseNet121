@@ -7,12 +7,17 @@ on:
 
 jobs:
   build_and_deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-gpu
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
+        
+      - name: Set up Git user
+        run: |
+          git config --global user.email "azizbayupratama46@gmail.com"
+          git config --global user.name "azizbp"
+          
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
@@ -31,10 +36,7 @@ jobs:
           python train_model.py
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
-      - name: Set up Git user
-        run: |
-          git config --global user.email "azizbayupratama46@gmail.com"
-          git config --global user.name "azizbp46"
+      
       - name: Push Model to Hugging Face Hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
