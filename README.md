@@ -7,14 +7,14 @@ This repository contains a deep learning model for classifying different types o
 ```
 ├── .github
 │   └── workflows
-│       └── build.yaml            # GitHub Actions workflow configuration
-├── .gitattributes                # Git attributes file
-├── .gitignore                    # Git ignore file
+│       └── build.yaml                      # GitHub Actions workflow configuration
+├── .gitattributes                          # Git attributes file
+├── .gitignore                              # Git ignore file
 ├── bestModel-trashnet_v9-densenet121.h5    # Trained model weights
-├── push_to_hub.py                # Script to push model to Hugging Face Hub
-├── requirements.txt              # Python dependencies
-├── train_model.py                # Main training script
-└── trashnet_model.ipynb          # Jupyter notebook with model development
+├── push_to_hub.py                          # Script to push model to Hugging Face Hub
+├── requirements.txt                        # Python dependencies
+├── train_model.py                          # Main training script
+└── trashnet_model.ipynb                    # Jupyter notebook with model development
 ```
 
 ## 🚀 Features
@@ -28,7 +28,7 @@ This repository contains a deep learning model for classifying different types o
 
 ## 🛠️ Technologies Used
 
-- TensorFlow 2.x
+- TensorFlow 2.15
 - Python 3.10
 - Wandb
 - GitHub Actions
@@ -49,23 +49,27 @@ This repository contains a deep learning model for classifying different types o
 ## 🔧 Setup and Installation
 
 1. Clone the repository:
+
 ```bash
-git clone https://github.com/yourusername/trashnet-DenseNet121.git
+git clone https://github.com/azizbp/trashnet-DenseNet121.git
 cd trashnet-DenseNet121
 ```
 
 2. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 3. Set up environment variables:
+
 ```bash
 cp .env.example .env
-# Edit .env with your configuration
+# Edit .env with your own token
 ```
 
 4. Training the model:
+
 ```bash
 python train_model.py
 ```
@@ -73,7 +77,8 @@ python train_model.py
 ## 🚂 Training
 
 The model training includes:
-- Image augmentation (rotation, flipping, brightness adjustment)
+
+- Image augmentation (rotation, flipping, brightness adjustment, etc)
 - Validation split: 80% training, 20% validation
 - Batch size: 32
 - Learning rate: 0.001
@@ -83,6 +88,7 @@ The model training includes:
 ## 📈 Model Performance
 
 The model achieves:
+
 - Training Accuracy: 0.9502
 - Validation Accuracy: 0.8688
 - Training Loss : 0.3500
@@ -96,11 +102,13 @@ The trained model is automatically pushed to Hugging Face Hub using the `push_to
 ## 🔄 GitHub Actions Workflow
 
 The repository includes automated training pipeline using GitHub Actions:
-- Triggers on push to main branch
-- Sets up Python environment
-- Installs dependencies
-- Runs training script
-- Logs metrics to Weights & Biases
+
+- Checkout Repository
+- Set up Git User
+- Set up Python environment
+- Install dependencies
+- Download dataset
+- Run training script
 - Pushes model to Hugging Face Hub
 
 ## 📊 Weights & Biases Integration
@@ -120,12 +128,12 @@ Training metrics and experiments are tracked using Weights & Biases. You can vie
 If you use this model in your research, please cite:
 
 ```bibtex
-@misc{your-model-name,
-  author = {Your Name},
+@misc{trashnet-DenseNet121,
+  author = {azizbp},
   title = {TrashNet Classification using DenseNet121},
   year = {2024},
   publisher = {GitHub},
   journal = {GitHub repository},
-  howpublished = {\url{https://github.com/yourusername/trashnet-DenseNet121}}
+  howpublished = {\url{https://github.com/azizbp/trashnet-DenseNet121.git}}
 }
 ```

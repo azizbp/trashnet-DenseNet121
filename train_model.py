@@ -1,7 +1,6 @@
 import os
 import wandb
 import zipfile
-import numpy as np
 import tensorflow as tf
 from tensorflow.keras.applications import DenseNet121
 from tensorflow.keras.regularizers import l2 
@@ -16,7 +15,7 @@ print(f"TensorFlow version: {tf.__version__}")
 # connect to wandb.ai
 wandb.init(project="trashnet-model", entity="azizbp-gunadarma-university")
 
-# Configuration
+# configuration
 config = {
     "learning_rate": 0.001,
     "epochs": 50,
@@ -35,10 +34,14 @@ with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
 ds_store_path = 'trashnet/dataset-resized/.DS_Store'
 if os.path.exists(ds_store_path):
     os.remove(ds_store_path)
+    print(".DS_Store file removed successfully.")
+else:
+    print(".DS_Store file does not exist.")
 
-# Initialize directories
+# initialize directories
 train_dir = 'trashnet/dataset-resized'
-classes = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash']
+classes = [os.listdir(train_dir)]
+print(classes)
 
 # Print dataset info
 for class_name in classes:
