@@ -15,7 +15,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 wandb.init(project="trashnet-model", entity="azizbp-gunadarma-university")
 
 # unzip the dataset
-zip_file_path = 'trashnet/dataset-resized.zip'
+zip_file_path = 'dataset-resized.zip'
 
 with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
     zip_ref.extractall('trashnet')
