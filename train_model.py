@@ -144,13 +144,16 @@ class MyCallback(tf.keras.callbacks.Callback):
 
 # Training
 try:
+    steps_per_epoch = len(train_generator)
+    validation_steps = len(validation_generator)
+    
     history = model.fit(
         train_generator,
         validation_data=validation_generator,
         epochs=config["epochs"],
         class_weight=class_weights,
-        workers=4,
-        use_multiprocessing=True,
+        steps_per_epoch=steps_per_epoch,
+        validation_steps=validation_steps,
         callbacks=[MyCallback(), early_stopping, lr_reduction]
     )
     
