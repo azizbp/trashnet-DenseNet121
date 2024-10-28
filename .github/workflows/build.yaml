@@ -7,7 +7,7 @@ on:
 
 jobs:
   build_and_deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-gpu
 
     steps:
       - name: Checkout repository
@@ -21,6 +21,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+
+      - name: Download dataset
+        run: |
+          curl -L https://huggingface.co/datasets/garythung/trashnet/download
 
       - name: Run Jupyter Notebook
         run: |
