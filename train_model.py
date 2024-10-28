@@ -40,7 +40,7 @@ else:
 
 # initialize directories
 train_dir = 'trashnet/dataset-resized'
-classes = [os.listdir(train_dir)]
+classes = ['cardboard', 'paper', 'glass', 'metal', 'plastic', 'trash']
 print(classes)
 
 # Print dataset info
