@@ -28,6 +28,8 @@ jobs:
           jupyter nbconvert --to script trashnet-model.ipynb
 
       - name: Run Training Script
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
         run: |
           python trashnet-model.py
 
