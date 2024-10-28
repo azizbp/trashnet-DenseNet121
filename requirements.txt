@@ -4,9 +4,10 @@ opencv-python==4.10.0.84
 pillow==10.3.0
 scikit-learn==1.2.2
 seaborn==0.12.2
-tensorflow==2.16.1
+tensorflow==2.15.0
 wandb==0.18.3
 huggingface_hub
 python-dotenv
 nbconvert
 jupyter
+h5py

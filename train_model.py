@@ -1,6 +1,7 @@
 import os
 import wandb
 import zipfile
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras.applications import DenseNet121
 from tensorflow.keras.regularizers import l2 
@@ -9,6 +10,8 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout, BatchNormalization, Activation
 from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+print(f"TensorFlow version: {tf.__version__}")
 
 # connect to wandb.ai
 wandb.init(project="trashnet-model", entity="azizbp-gunadarma-university")
@@ -37,6 +40,12 @@ if os.path.exists(ds_store_path):
 train_dir = 'trashnet/dataset-resized'
 classes = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash']
 
+# Print dataset info
+for class_name in classes:
+    class_path = os.path.join(train_dir, class_name)
+    if os.path.exists(class_path):
+        print(f"{class_name}: {len(os.listdir(class_path))} images")
+
 # Calculate class weights
 total_samples = sum([len(os.listdir(os.path.join(train_dir, class_name))) for class_name in classes])
 class_weights = {
@@ -44,7 +53,9 @@ class_weights = {
     for i, class_name in enumerate(classes)
 }
 
-# Data generators with proper dtype specification
+print("\nClass weights:", class_weights)
+
+# Data generators
 train_datagen = ImageDataGenerator(
     rescale=1./255,
     rotation_range=45,
@@ -56,41 +67,40 @@ train_datagen = ImageDataGenerator(
     zoom_range=0.3,
     brightness_range=[0.7, 1.3],
     fill_mode='nearest',
-    validation_split=0.2,
-    dtype=tf.float32
+    validation_split=0.2
 )
 
 val_datagen = ImageDataGenerator(
     rescale=1./255,
-    validation_split=0.2,
-    dtype=tf.float32
+    validation_split=0.2
 )
 
-# Create generators with proper setup
+print("\nSetting up data generators...")
+
+# Create generators
 train_generator = train_datagen.flow_from_directory(
-    directory=train_dir,
+    train_dir,
     target_size=(config["image_size"], config["image_size"]),
     batch_size=config["batch_size"],
     class_mode='categorical',
     shuffle=True,
-    subset='training',
-    classes=classes
+    subset='training'
 )
 
 validation_generator = val_datagen.flow_from_directory(
-    directory=train_dir,
+    train_dir,
     target_size=(config["image_size"], config["image_size"]),
     batch_size=config["batch_size"],
     class_mode='categorical',
     shuffle=False,
-    subset='validation',
-    classes=classes
+    subset='validation'
 )
 
-# Create model with proper input specification
-input_shape = (config["image_size"], config["image_size"], 3)
+print("\nCreating model...")
+
+# Create model
 base_model = DenseNet121(
-    input_shape=input_shape,
+    input_shape=(config["image_size"], config["image_size"], 3),
     include_top=False,
     weights='imagenet'
 )
@@ -112,8 +122,7 @@ predictions = Dense(len(classes), activation='softmax')(x)
 
 model = Model(inputs=base_model.input, outputs=predictions)
 
-# Compile with mixed precision
-tf.keras.mixed_precision.set_global_policy('mixed_float16')
+# Compile model
 optimizer = Adam(learning_rate=config["learning_rate"])
 model.compile(
     optimizer=optimizer,
@@ -121,60 +130,64 @@ model.compile(
     metrics=['accuracy']
 )
 
+print("\nModel compiled successfully")
+
 # Callbacks
-lr_reduction = ReduceLROnPlateau(
-    monitor='val_loss',
-    patience=2,
-    factor=0.2,
-    min_lr=1e-7,
-    verbose=1
-)
+callbacks = [
+    ReduceLROnPlateau(
+        monitor='val_loss',
+        patience=2,
+        factor=0.2,
+        min_lr=1e-7,
+        verbose=1
+    ),
+    EarlyStopping(
+        monitor='val_loss',
+        patience=5,
+        restore_best_weights=True,
+        verbose=1
+    )
+]
 
-early_stopping = EarlyStopping(
-    monitor='val_loss',
-    patience=5,
-    restore_best_weights=True,
-    verbose=1
-)
-
-class MyCallback(tf.keras.callbacks.Callback):
-    def on_epoch_end(self, epoch, logs={}):
-        if (logs.get('accuracy', 0) > 0.9) and (logs.get('val_accuracy', 0) > 0.9):
-            self.model.stop_training = True
+print("\nStarting training...")
 
 # Training
 try:
-    steps_per_epoch = len(train_generator)
-    validation_steps = len(validation_generator)
-    
     history = model.fit(
         train_generator,
-        validation_data=validation_generator,
         epochs=config["epochs"],
+        validation_data=validation_generator,
         class_weight=class_weights,
-        steps_per_epoch=steps_per_epoch,
-        validation_steps=validation_steps,
-        callbacks=[MyCallback(), early_stopping, lr_reduction]
+        callbacks=callbacks,
+        verbose=1
     )
+    
+    print("\nTraining completed successfully")
     
     # Log metrics to wandb
     for epoch in range(len(history.history['accuracy'])):
         wandb.log({
             "epoch": epoch + 1,
-            "accuracy": history.history['accuracy'][epoch],
-            "loss": history.history['loss'][epoch],
-            "val_accuracy": history.history['val_accuracy'][epoch],
-            "val_loss": history.history['val_loss'][epoch]
+            "accuracy": float(history.history['accuracy'][epoch]),
+            "loss": float(history.history['loss'][epoch]),
+            "val_accuracy": float(history.history['val_accuracy'][epoch]),
+            "val_loss": float(history.history['val_loss'][epoch])
         })
+    
+    print("\nMetrics logged to wandb")
     
     # Save model
     model.save("bestModel-trashnet_v9-densenet121.h5")
     artifact = wandb.Artifact("trashnet-model", type="model")
     artifact.add_file("bestModel-trashnet_v9-densenet121.h5")
     wandb.log_artifact(artifact)
+    
+    print("\nModel saved successfully")
 
 except Exception as e:
-    print(f"An error occurred during training: {str(e)}")
+    print(f"\nAn error occurred during training: {str(e)}")
+    print(f"Error type: {type(e)}")
+    print(f"Error details: {e.__dict__}")
     raise
 
 finally:
